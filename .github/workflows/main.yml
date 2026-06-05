@@ -1,0 +1,45 @@
+name: Morning Market Report
+
+on:
+  schedule:
+    # 日本時間の朝6:00に動かす設定（世界標準時で指定するため9時間引いて21:00）
+    - cron: '0 21 * * *'
+  workflow_dispatch: # 今すぐ手動でテスト実行するためのボタン
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # 画像を上書き保存する権限
+
+    steps:
+    - name: 倉庫からファイルを取り出す
+      uses: actions/checkout@v4
+
+    - name: Pythonを準備する
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: 日本語フォントの準備（文字化け対策）
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y fonts-noto-cjk
+        sed -i "s/'Meiryo'/'Noto Sans CJK JP'/g" market.py
+
+    - name: 必要なライブラリ（調理器具）をインストール
+      run: |
+        python -m pip install --upgrade pip
+        pip install yfinance matplotlib pandas playwright
+        playwright install --with-deps chromium
+
+    - name: プログラムを実行して画像を作成！
+      run: python market.py
+
+    - name: 出来上がった画像をGitHubに保存する
+      run: |
+        git config --global user.name "github-actions[bot]"
+        git config --global user.email "github-actions[bot]@users.noreply.github.com"
+        git add morning_market_report.png
+        git commit -m "毎朝のレポートを更新" || echo "変更がありません"
+        git push
